@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <tf2_msgs/TFMessage.h>
+#include <sensor_msgs/LaserScan.h>
 #include <darc/component.h>
 #include <darc/timer/periodic_timer.h>
 #include <darc_ros/pubsub_translator.h>
@@ -11,6 +12,7 @@ protected:
 
   // Darc Stuff
   darc_ros::PubsubTranslator<tf2_msgs::TFMessage> tf_translator_;
+  darc_ros::PubsubTranslator<sensor_msgs::LaserScan> scan_translator_;
   darc::timer::PeriodicTimer work_timer_;
 
 protected:
@@ -23,6 +25,7 @@ public:
   DarcRosComponent(const std::string& instance_name, darc::Node::Ptr node) :
     darc::Component(instance_name, node),
     tf_translator_( this, "/tf", nh_ ),
+    scan_translator_( this, "/scan", nh_ ),
     work_timer_(this, boost::bind(&DarcRosComponent::timerHandler, this), boost::posix_time::milliseconds(100))
   {
   }
@@ -38,7 +41,4 @@ public:
 
 };
 
-namespace DarcRosComponent_reg {
-  static int blah =  darc::Registry::registerComponent( "DarcRosComponent", boost::bind(&DarcRosComponent::instantiate_special, _1, _2) );
-}
-
+DARC_REGISTER_COMPONENT(DarcRosComponent);
