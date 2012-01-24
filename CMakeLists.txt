@@ -15,10 +15,5 @@ include_directories(${ROS_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "-Wall -g")
 #set(CMAKE_CXX_FLAGS "-Os")
 
-add_executable(darc_ros src/darc_ros.cpp src/node_darc_ros.cpp)
+add_executable(darc_ros src/darc_ros_component.cpp src/darc_ros_node.cpp)
 target_link_libraries(darc_ros ${Boost_LIBRARIES} ${ROS_LIBRARIES})
-
-catkin_project(darc_ros
-  VERSION 0.0.1
-#  INCLUDE_DIRS include
-  )

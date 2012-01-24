@@ -10,7 +10,7 @@ int main(int argc, const char* argv[])
 
   // Create and run TFBroadcasterComponent
   darc::Component::Ptr c1 = node->instantiateComponent( "DarcRosComponent" );
-  boost::shared_ptr<boost::thread> c1_thread(new boost::thread( boost::bind(&darc::Component::run, c1)));
+  c1->run();
 
   // You can also manually construct a component and call the run() method if you want.
   // But using the register allows for other cool stuff. E.g. starting remotely.
