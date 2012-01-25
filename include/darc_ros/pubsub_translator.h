@@ -22,18 +22,21 @@ protected:
   darc::pubsub::Publisher<T> darc_pub_;
 
 protected:
-  void darcHandler(const boost::shared_ptr<const T> msg)
+  void darcHandler(const boost::shared_ptr<const T> msg, darc::pubsub::CallbackInfo info)
   {
-    ros_pub_.publish(msg);
+    if(info.sender_component_id != getComponentID())
+    {
+      ros_pub_.publish(msg);
+    }
   }
 
   void rosHandler(const ros::MessageEvent<T const>& event)
-  {/*
-    const std::string& publisher_name = event.getPublisherName();
-    const ros::M_string& header = event.getConnectionHeader();
-    ros::Time receipt_time = event.getReceiptTime();
-   */
-    darc_pub_.publish(event.getMessage());
+  {
+    if( event.getPublisherName() != ros::this_node::getName() )
+    {
+      boost::shared_ptr<const T> mymsg = event.getMessage();
+      darc_pub_.publish(mymsg);
+    }
   }
 
 public:
@@ -41,8 +44,9 @@ public:
     darc::Subcomponent(owner),
     // Ros
     ros_pub_( nh_.advertise<T>(topic, 10 ) ),
+    ros_sub_( nh_.subscribe(topic, 10, &PubsubTranslator::rosHandler, this) ),
     // Darc
-    darc_sub_(this, topic, boost::bind(&PubsubTranslator::darcHandler, this, _1)),
+    darc_sub_(this, topic, boost::bind(&PubsubTranslator::darcHandler, this, _1, _2)),
     darc_pub_(this, topic)
   {
   }
