@@ -8,8 +8,18 @@
 namespace darc_ros
 {
 
+class PubsubTranslatorAbstract
+{
+public:
+  virtual ~PubsubTranslatorAbstract()
+  {
+  }
+};
+
+typedef boost::shared_ptr<darc_ros::PubsubTranslatorAbstract> PubsubTranslatorAbstractPtr;
+
 template<typename T>
-class PubsubTranslator : public darc::Subcomponent
+class PubsubTranslator : public darc::Subcomponent, public PubsubTranslatorAbstract
 {
 protected:
   // ROS Stuff
