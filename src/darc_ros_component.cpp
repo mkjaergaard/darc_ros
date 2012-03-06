@@ -1,81 +1,62 @@
+/*
+ * Copyright (c) 2012, Prevas A/S
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of Prevas A/S nor the names of its
+ *       contributors may be used to endorse or promote products derived from
+ *       this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/**
+ * DARC DARC/ROS bridge component
+ *
+ * \author Morten Kjaergaard
+ */
+
 #include <ros/ros.h>
-#include <ros/master.h>
-#include <darc/component.h>
-#include <darc/pubsub/event_listener.h>
-#include <darc/timer/periodic_timer.h>
+#include <darc/darc.h>
+#include <darc_ros/translator_factory.h>
 #include <darc_ros/pubsub_translator.h>
 
 // Message types we support
 #include <std_msgs/String.h>
-#include <tf2_msgs/TFMessage.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
-
-class TranslatorFactoryEntry
-{
-public:
-  virtual boost::shared_ptr<darc_ros::PubsubTranslatorAbstract> create(darc::Owner * owner, const std::string& topic, ros::NodeHandle &nh) = 0;
-};
-
-template<typename T>
-class TranslatorFactoryEntryTyped : public TranslatorFactoryEntry
-{
-public:
-  boost::shared_ptr<darc_ros::PubsubTranslatorAbstract> create(darc::Owner * owner, const std::string& topic, ros::NodeHandle &nh)
-  {
-    return boost::shared_ptr<darc_ros::PubsubTranslator<T> >( new darc_ros::PubsubTranslator<T>(owner, topic, nh) );
-  }
-
-};
-
-class TranslatorFactory
-{
-protected:
-  std::map<std::string, TranslatorFactoryEntry*> items_;
-  darc::Owner * owner_;
-  ros::NodeHandle nh_;
-
-public:
-  TranslatorFactory(darc::Owner * owner, ros::NodeHandle &nh) :
-    owner_(owner),
-    nh_(nh)
-  {
-  }
-
-  template<typename T>
-  void addType()
-  {
-    items_[ros::message_traits::DataType<T>::value()] = new TranslatorFactoryEntryTyped<T>();
-  }
-
-  darc_ros::PubsubTranslatorAbstractPtr createTranslator(const std::string& topic, const std::string& type_name)
-  {
-    if(items_.count(type_name) > 0)
-    {
-      return items_[type_name]->create(owner_, topic, nh_);
-    }
-    else
-    {
-      DARC_WARNING("No DARC/ROS translator for (%s)", type_name.c_str());
-      return darc_ros::PubsubTranslatorAbstractPtr();
-    }
-  }
-
-};
-
-
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf2_msgs/TFMessage.h>
 
 class DarcRosComponent : public darc::Component
 {
 protected:
   ros::NodeHandle nh_;
 
-  TranslatorFactory factory_;
+  darc_ros::TranslatorFactory factory_;
 
   std::map<std::string, darc_ros::PubsubTranslatorAbstractPtr> translators_;
 
   // Darc Stuff
-
   darc::timer::PeriodicTimer work_timer_;
   darc::timer::PeriodicTimer topic_check_timer_;
   darc::pubsub::EventListener listener_;
@@ -93,7 +74,7 @@ protected:
     }
   }
 
-  bool add(const std::string& topic, const std::string& type_name)
+  bool createTranslator(const std::string& topic, const std::string& type_name)
   {
     if(translators_.count(topic) == 0)
     {
@@ -102,7 +83,12 @@ protected:
 
       if(translator.get() != 0)
       {
+	this->startPrimitives();
 	return true;
+      }
+      else
+      {
+	DARC_INFO("DARC/ROS: Type %s for topic %s not available in factory", type_name.c_str(), topic.c_str());
       }
     }
     return false;
@@ -115,9 +101,9 @@ protected:
 
     for(ros::master::V_TopicInfo::iterator it = topics.begin(); it != topics.end(); it++)
     {
-      if(add(it->name, it->datatype))
+      if(createTranslator(it->name, it->datatype))
       {
-	DARC_INFO("::: Added bridge for topic used by ROS %s (%s)", it->name.c_str(), it->datatype.c_str());
+	DARC_INFO("DARC/ROS: Created bridge for topic used by ROS %s (%s)", it->name.c_str(), it->datatype.c_str());
       }
     }
   }
@@ -126,9 +112,9 @@ protected:
   {
     if(num > 0)
     {
-      if(add(topic, type_name))
+      if(createTranslator(topic, type_name))
       {
-	DARC_INFO("::: Added bridge for topic used by DARC %s (%s)", topic.c_str(), type_name.c_str());
+	DARC_INFO("DARC/ROS: Created bridge for topic used by DARC %s (%s)", topic.c_str(), type_name.c_str());
       }
     }
   }
@@ -137,7 +123,7 @@ public:
   DarcRosComponent(const std::string& instance_name, darc::Node::Ptr node) :
     darc::Component(instance_name, node),
     factory_(this, nh_),
-    work_timer_(this, boost::bind(&DarcRosComponent::workTimerHandler, this), boost::posix_time::milliseconds(100)),
+    work_timer_(this, boost::bind(&DarcRosComponent::workTimerHandler, this), boost::posix_time::milliseconds(50)),
     topic_check_timer_(this, boost::bind(&DarcRosComponent::topicCheckTimerHandler, this), boost::posix_time::milliseconds(1000)),
     listener_(this)
   {
@@ -145,8 +131,11 @@ public:
     factory_.addType<tf2_msgs::TFMessage>();
     factory_.addType<sensor_msgs::LaserScan>();
     factory_.addType<nav_msgs::Odometry>();
+    factory_.addType<geometry_msgs::Twist>();
+    factory_.addType<geometry_msgs::PoseWithCovarianceStamped>();
+    factory_.addType<geometry_msgs::PoseStamped>();
 
-    //todo spin up a thread to handle ros::spin instead of the timer callback
+    //todo: spin up a thread to handle ros::spin() instead of the timer callback
     listener_.remoteSubscriberChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
 							this, _1, _2, _3));
     listener_.remotePublisherChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
