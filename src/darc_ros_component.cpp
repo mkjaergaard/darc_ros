@@ -120,11 +120,10 @@ protected:
   }
 
 public:
-  DarcRosComponent(const std::string& instance_name, darc::Node::Ptr node) :
-    darc::Component(instance_name, node),
+  DarcRosComponent() :
     factory_(this, nh_),
-    work_timer_(this, boost::bind(&DarcRosComponent::workTimerHandler, this), boost::posix_time::milliseconds(50)),
-    topic_check_timer_(this, boost::bind(&DarcRosComponent::topicCheckTimerHandler, this), boost::posix_time::milliseconds(1000)),
+    work_timer_(this, &DarcRosComponent::workTimerHandler, boost::posix_time::milliseconds(50)),
+    topic_check_timer_(this, &DarcRosComponent::topicCheckTimerHandler, boost::posix_time::milliseconds(1000)),
     listener_(this)
   {
     factory_.addType<std_msgs::String>();
@@ -145,7 +144,7 @@ public:
 
   // Override instantiate method so we can init ros before our primitives are constructed
   template<typename T>
-  static boost::shared_ptr<DarcRosComponent> instantiate( const std::string& instance_name, darc::Node::Ptr node )
+  static boost::shared_ptr<DarcRosComponent> instantiate(const std::string& instance_name, darc::NodePtr node )
   {
     int argc = 0;
     ros::init(argc, (char**)0, "darc_ros");

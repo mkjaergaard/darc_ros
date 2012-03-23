@@ -6,10 +6,10 @@
 int main(int argc, const char* argv[])
 {
   // Create Node
-  darc::Node::Ptr node = darc::Node::create();
+  darc::NodePtr node = darc::Node::create();
 
   // Create and run TFBroadcasterComponent
-  darc::Component::Ptr c1 = node->instantiateComponent( "DarcRosComponent" );
+  darc::ComponentPtr c1 = node->instantiateComponent( "DarcRosComponent" );
   c1->run();
 
   // You can also manually construct a component and call the run() method if you want.

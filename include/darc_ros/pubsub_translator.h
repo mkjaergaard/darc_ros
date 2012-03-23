@@ -66,7 +66,7 @@ protected:
   darc::pubsub::Publisher<T> darc_pub_;
 
 protected:
-   void darcHandler(const boost::shared_ptr<const T> msg, darc::pubsub::CallbackInfo info)
+  void darcHandler(const T& msg, const darc::pubsub::CallbackInfo& info)
   {
     if(info.sender_component_id != getComponentID())
     {
@@ -90,7 +90,7 @@ public:
     ros_pub_( nh_.advertise<T>(topic, 10 ) ),
     ros_sub_( nh_.subscribe(topic, 10, &PubsubTranslator::rosHandler, this) ),
     // Darc
-    darc_sub_(this, topic, boost::bind(&PubsubTranslator::darcHandler, this, _1, _2)),
+    darc_sub_(this, topic, &PubsubTranslator::darcHandler),
     darc_pub_(this, topic)
   {
   }
