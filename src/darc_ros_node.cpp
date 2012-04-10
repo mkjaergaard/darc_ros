@@ -18,7 +18,7 @@ int main(int argc, const char* argv[])
   node->connect("udp://127.0.0.1:5120-5130");
 
   // Run Node in main thread
-  node->run();
+  node->runCurrentThread();
   return 0;
 }
 

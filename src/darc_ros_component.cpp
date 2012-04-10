@@ -42,6 +42,7 @@
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Image.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -59,7 +60,7 @@ protected:
   // Darc Stuff
   darc::timer::PeriodicTimer work_timer_;
   darc::timer::PeriodicTimer topic_check_timer_;
-  darc::pubsub::EventListener listener_;
+  darc::pubsub::StateInterface listener_;
 
 protected:
   void workTimerHandler()
@@ -108,9 +109,9 @@ protected:
     }
   }
 
-  void darcTopicHandler(const std::string& topic, const std::string& type_name, size_t num)
+  void darcTopicHandler(const std::string& topic, const std::string& type_name, size_t num_sub, size_t num_pub)
   {
-    if(num > 0)
+    if(num_pub > 0 || num_sub > 0)
     {
       if(createTranslator(topic, type_name))
       {
@@ -130,16 +131,20 @@ public:
     factory_.addType<tf2_msgs::TFMessage>();
     factory_.addType<sensor_msgs::LaserScan>();
     factory_.addType<nav_msgs::Odometry>();
+    factory_.addType<sensor_msgs::Image>();
     factory_.addType<geometry_msgs::Twist>();
     factory_.addType<geometry_msgs::PoseWithCovarianceStamped>();
     factory_.addType<geometry_msgs::PoseStamped>();
 
-    //todo: spin up a thread to handle ros::spin() instead of the timer callback
-    listener_.remoteSubscriberChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
-							this, _1, _2, _3));
-    listener_.remotePublisherChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
-						       this, _1, _2, _3));
+  }
 
+  void onStart()
+  {
+    //todo: spin up a thread to handle ros::spin() instead of the timer callback
+    listener_.remotePubsubChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
+						    this, _1, _2, _3, _4));
+    listener_.localPubsubChangesListen(boost::bind(&DarcRosComponent::darcTopicHandler,
+						   this, _1, _2, _3, _4));
   }
 
   // Override instantiate method so we can init ros before our primitives are constructed

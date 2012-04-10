@@ -37,7 +37,7 @@
 
 #include <ros/ros.h>
 #include <darc/darc.h>
-#include <darc/subcomponent.h>
+#include <darc/composition.h>
 
 namespace darc_ros
 {
@@ -53,7 +53,7 @@ public:
 typedef boost::shared_ptr<darc_ros::PubsubTranslatorAbstract> PubsubTranslatorAbstractPtr;
 
 template<typename T>
-class PubsubTranslator : public darc::Subcomponent, public PubsubTranslatorAbstract
+class PubsubTranslator : public darc::Composition, public PubsubTranslatorAbstract
 {
 protected:
   // ROS Stuff
@@ -85,7 +85,7 @@ protected:
 
 public:
   PubsubTranslator(darc::Owner * owner, const std::string& topic, ros::NodeHandle& nh) :
-    darc::Subcomponent(owner),
+    darc::Composition(owner),
     // Ros
     ros_pub_( nh_.advertise<T>(topic, 10 ) ),
     ros_sub_( nh_.subscribe(topic, 10, &PubsubTranslator::rosHandler, this) ),
